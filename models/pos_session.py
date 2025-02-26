@@ -1,16 +1,5 @@
-from odoo import models, fields
+from odoo import api, fields, models, _, Command
 
-#     @api.depends('value')
-#     def _value_pc(self):
-#         for record in self:
-#             record.value2 = float(record.value) / 100
-
-
-#class AccountMove(models.Model):
-#    _inherit = 'account.move'
-
-
-from odoo import models
 from collections import defaultdict
 
 class PosSession(models.Model):
