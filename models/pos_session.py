@@ -24,7 +24,7 @@ class PosSession(models.Model):
         new_sales = defaultdict(lambda: {'amount': 0.0, 'amount_converted': 0.0, 'product_id': None})
         
         # Procesamos cada orden cerrada
-        for order in self._get_closed_orders():
+        for order in  self.order_ids: #17.0 self._get_closed_orders():
             if not order.is_invoiced:  # Solo órdenes no facturadas
                 for order_line in order.lines:
                     line = self._prepare_line(order_line)
