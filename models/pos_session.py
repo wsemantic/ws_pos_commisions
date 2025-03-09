@@ -6,44 +6,44 @@ class PosSession(models.Model):
     _inherit = 'pos.session'
 
     def _accumulate_amounts(self, data):
-        # Llamamos al método original para obtener los datos base
+        # We call the original method to obtain the base data.
         data = super(PosSession, self)._accumulate_amounts(data)
         
-        # Creamos un nuevo diccionario para acumular por producto, incluyendo tax_amount
+        # We create a new dictionary to accumulate by product, including tax_amount
         new_sales = defaultdict(lambda: {'amount': 0.0, 'amount_converted': 0.0, 'tax_amount': 0.0, 'product_id': None})
         
-        # Procesamos cada orden cerrada
-        for order in self.order_ids: #17.0 self._get_closed_orders():
-            if not order.is_invoiced:  # Solo órdenes no facturadas
+        # We process each closed order
+        for order in self._get_closed_orders(): #17.0 self._get_closed_orders():
+            if not order.is_invoiced:  # Only unbilled orders
                 for order_line in order.lines:
                     line = self._prepare_line(order_line)
-                    # Definimos la nueva clave incluyendo product_id
+                    # We define the new key including product_id
                     sale_key = (
                         line['income_account_id'],
                         -1 if line['amount'] < 0 else 1,
                         tuple((tax['id'], tax['account_id'], tax['tax_repartition_line_id']) for tax in line['taxes']),
                         line['base_tags'],
-                        order_line.product_id.id  # Añadimos el product_id directamente
+                        order_line.product_id.id  # Add the product_id directly
                     )
-                    # Acumulamos los montos
+                    # We accumulate the amounts
                     new_sales[sale_key] = self._update_amounts(
                         new_sales[sale_key],
                         {'amount': line['amount']},
                         line['date_order'],
                         round=False
                     )
-                    # Acumulamos tax_amount para cada impuesto en la línea
+                    # We accumulate tax_amount for each tax in line
                     for tax in line['taxes']:
                         new_sales[sale_key]['tax_amount'] += tax['amount']
-                    # Guardamos el product_id
+                    # Save the product_id
                     new_sales[sale_key]['product_id'] = order_line.product_id.id
         
-        # Reemplazamos el diccionario original
+        # We replace the original dictionary
         data['sales'] = new_sales
         return data
 
     def _get_sale_vals(self, key, amount, amount_converted):
-        # Desempaquetamos la clave incluyendo product_id
+        # Unpack the key including product_id
         account_id, sign, tax_keys, base_tag_ids, product_id = key
         tax_ids = set(tax[0] for tax in tax_keys)
         applied_taxes = self.env['account.tax'].browse(tax_ids)
@@ -52,7 +52,7 @@ class PosSession(models.Model):
         if applied_taxes:
             name = _('%s with %s', title, ', '.join([tax.name for tax in applied_taxes]))
         
-        # Creamos el diccionario para la línea contable
+        # Create the dictionary for the accounting line
         partial_vals = {
             'name': name,
             'account_id': account_id,
