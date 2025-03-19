@@ -18,12 +18,14 @@ class PosSession(models.Model):
                 for order_line in order.lines:
                     line = self._prepare_line(order_line)
                     # We define the new key including product_id
+                    agent_ids = [(0, 0, {"agent_id": order.company_id.partner_id.id, "commission_id": order.company_id.partner_id.commission_id.id})]
                     sale_key = (
                         line['income_account_id'],
                         -1 if line['amount'] < 0 else 1,
                         tuple((tax['id'], tax['account_id'], tax['tax_repartition_line_id']) for tax in line['taxes']),
                         line['base_tags'],
-                        order_line.product_id.id  # Add the product_id directly
+                        order_line.product_id.id,  # Add the product_id directly,
+                        order.company_id.partner_id.id
                     )
                     # We accumulate the amounts
                     new_sales[sale_key] = self._update_amounts(
@@ -37,6 +39,7 @@ class PosSession(models.Model):
                         new_sales[sale_key]['tax_amount'] += tax['amount']
                     # Save the product_id
                     new_sales[sale_key]['product_id'] = order_line.product_id.id
+                    new_sales[sale_key]['agent_ids'] = agent_ids
         
         # We replace the original dictionary
         data['sales'] = new_sales
@@ -44,7 +47,7 @@ class PosSession(models.Model):
 
     def _get_sale_vals(self, key, amount, amount_converted):
         # Unpack the key including product_id
-        account_id, sign, tax_keys, base_tag_ids, product_id = key
+        account_id, sign, tax_keys, base_tag_ids, product_id, agent_id = key
         tax_ids = set(tax[0] for tax in tax_keys)
         applied_taxes = self.env['account.tax'].browse(tax_ids)
         title = _('Sales') if sign == 1 else _('Refund')
@@ -59,6 +62,7 @@ class PosSession(models.Model):
             'move_id': self.move_id.id,
             'tax_ids': [(6, 0, tax_ids)],
             'tax_tag_ids': [(6, 0, base_tag_ids)],
-            'product_id': product_id,  # Añadimos el product_id
+            'product_id': product_id,  # Añadimos el product_id,
+            'agent_ids': [(0, 0, {"agent_id": self.env['res.partner'].sudo().browse(agent_id).id, "commission_id": self.env['res.partner'].sudo().browse(agent_id).commission_id.id})],
         }
         return self._credit_amounts(partial_vals, amount, amount_converted)
