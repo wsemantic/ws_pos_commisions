@@ -21,11 +21,6 @@ class CommissionMakeSettle(models.TransientModel):
         """Filter sales invoice agent lines for this type of settlement."""
         # if self.settlement_type != "sale_invoice":
         #     return super()._get_agent_lines(agent, date_to_agent)
-        print(self.env["account.invoice.line.agent"].search(
-            self._get_account_settle_domain(agent, date_to_agent),
-            order="invoice_date",
-        ))
-        print(self._get_account_settle_domain(agent, date_to_agent))
         return self.env["account.invoice.line.agent"].search(
             self._get_account_settle_domain(agent, date_to_agent),
             order="invoice_date",

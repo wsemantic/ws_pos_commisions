@@ -18,14 +18,16 @@ class PosSession(models.Model):
                 for order_line in order.lines:
                     line = self._prepare_line(order_line)
                     # We define the new key including product_id
-                    agent_ids = [(0, 0, {"agent_id": order.company_id.partner_id.id, "commission_id": order.company_id.partner_id.commission_id.id})]
+                    agent_ids = []
+                    if order.company_id.partner_id.agent and order.company_id.partner_id.commission_id:
+                        agent_ids = [(0, 0, {"agent_id": order.company_id.partner_id.id, "commission_id": order.company_id.partner_id.commission_id.id})]
                     sale_key = (
                         line['income_account_id'],
                         -1 if line['amount'] < 0 else 1,
                         tuple((tax['id'], tax['account_id'], tax['tax_repartition_line_id']) for tax in line['taxes']),
                         line['base_tags'],
                         order_line.product_id.id,  # Add the product_id directly,
-                        order.company_id.partner_id.id
+                        order.company_id.partner_id.id if order.company_id.partner_id.agent and order.company_id.partner_id.commission_id else None
                     )
                     # We accumulate the amounts
                     new_sales[sale_key] = self._update_amounts(
@@ -63,6 +65,6 @@ class PosSession(models.Model):
             'tax_ids': [(6, 0, tax_ids)],
             'tax_tag_ids': [(6, 0, base_tag_ids)],
             'product_id': product_id,  # Añadimos el product_id,
-            'agent_ids': [(0, 0, {"agent_id": self.env['res.partner'].sudo().browse(agent_id).id, "commission_id": self.env['res.partner'].sudo().browse(agent_id).commission_id.id})],
+            'agent_ids': [(0, 0, {"agent_id": self.env['res.partner'].sudo().browse(agent_id).id, "commission_id": self.env['res.partner'].sudo().browse(agent_id).commission_id.id})] if agent_id else [],
         }
         return self._credit_amounts(partial_vals, amount, amount_converted)
